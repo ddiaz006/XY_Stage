@@ -1,3 +1,5 @@
+#include <LiquidCrystal.h>
+
 #include <Adafruit_MotorShield.h>
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
@@ -19,7 +21,6 @@ int horizontalSwitch = 2;
 int verticalSwitch = 3;
 int incomingByte = 0;   // for incoming serial data
 String command = "";
-//float stepsize = 0.00704225;
 
 float globalX = -99.0;
 float globalY = -99.0;
@@ -30,27 +31,36 @@ float ymax = 95.0;
 int ix = -1;
 int iy = -1;
 int ib = 0;
+int stepx = 142;
+int stepy = 142;//135;
 
 const int asize = 7;
 float diodex = 14.11;
 float diodey = 13.48;
 //               D1     D2     D3     D4     D5     D6
-float ax[] = {0, 37.06, 37.06, 23.31, 23.31, 9.56,  9.56};
-float ay[] = {0, 11.84, 24.4 , 11.84, 24.4 , 11.84, 24.4};
-//               D1    D2     D3     D4     D5     D6
-//float ax[] = {0, 10.0, 10,    24.11, 24.11, 38.22, 38.22};
-//float ay[] = {0, 12.4, 25.88, 12.4 , 25.88, 12.14, 25.88};
-//   Boards:  1  2     3     4      5      6
-float bx[] = {0, 48,   96,   96 ,   48 ,   0    };
-float by[] = {0, 0   , 0   , 57 ,   57 ,   57};
-//bool pause = false;
+float ax[] = {0, 37.04, 37.04, 23.29, 23.29, 9.67,  9.67};
+float ay[] = {0, 12, 24.6 , 12, 24.6 , 12, 24.6};
 
-//maxY = 101.1
-//maxX = 142.86?
+////               D1     D2     D3     D4     D5     D6
+//float ax[] = {0, 37.04, 37.04, 23.29, 23.29, 9.67,  9.67};
+//float ay[] = {0, 12.11, 24.6 , 12.11, 24.6 , 12.11, 24.6};
+
+//   Boards:  1  2     3     4      5      6
+float bx[] = {0, 47.62,   95.24,   95.24 ,   47.62 ,   0    };
+float by[] = {0, 0   , 0   , 54.49 ,   54.49 ,   54.49};
+
+
+///
+/////               D1     D2     D3     D4     D5     D6
+///float ax[] = {0, 37.06, 37.06, 23.31, 23.31, 9.56,  9.56};
+///float ay[] = {0, 11.84, 24.4 , 11.84, 24.4 , 11.84, 24.4};
+///
+/////   Boards:  1  2     3     4      5      6
+///float bx[] = {0, 48,   96,   96 ,   48 ,   0    };
+///float by[] = {0, 0   , 0   , 57 ,   57 ,   57};
 
 void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
-  //Serial.println("Stepper test!");
 
   AFMS.begin();  // create with the default frequency 1.6KHz
   //AFMS.begin(1000);  // OR with a different frequency, say 1KHz
@@ -110,34 +120,23 @@ void loop() {
   if(command =="reset") {ix = 0; iy = 0; Update();}
   if(command =="rs"){RasterSet();}
   if(command =="r" ){Raster();}
+  if(command =="x" ){Show();}
   
   if(data == "move") {
     x=xval.toFloat();
     y=yval.toFloat();
-    //Serial.print("x=");
-    //Serial.println(xval);
-    //Serial.print("y=");
-    //Serial.println(yval);
     XYMove(x,y);
     Update();
   }
   if(data == "dmove") {
     x=xval.toFloat();
     y=yval.toFloat();
-    //Serial.print("x=");
-    //Serial.println(xval);
-    //Serial.print("y=");
-    //Serial.println(yval);
     DXYMove(x,y);
     Update();
   }
   if(data == "adjust") {
     x=xval.toFloat();
     y=yval.toFloat();
-    //Serial.print("x=");
-    //Serial.println(xval);
-    //Serial.print("y=");
-    //Serial.println(yval);
     Adjust(x,y);
     //Update();
   }
@@ -151,6 +150,7 @@ void loop() {
   if(data =="bmove"){
   int bpoint = xval.toInt() - 1;
   int ipoint = yval.toInt();
+  ib = bpoint -1;
   if(bx[bpoint]+ax[ipoint]>0.0 && by[bpoint]+ay[ipoint] >0.0){
   XYMove(bx[bpoint]+ax[ipoint], by[bpoint]+ay[ipoint]);
   }
@@ -174,6 +174,33 @@ void Update(){
   Serial.print(",  Point: ");
   Serial.println(ix);
   Serial.println("  ");
+}
+
+void Show(){
+  int pts[]= {5,6,4,3,1,2};
+  int pts2[]= {1,2,4,3,5,6};
+  //loop through boards
+  for(int i = 0; i<6; i++){
+    for(int j = 0; j <6; j++){
+      Serial.print("Moving to Board: ");
+      Serial.print(i);
+      Serial.print(", Diode: ");
+      Serial.println(j);
+      if(i<3){
+        if(bx[i]+ax[pts[j]]>0.0 && by[i]+ay[pts[j]] >0.0){
+          XYMove(bx[i]+ax[pts[j]], by[i]+ay[pts[j]]);
+          delay(600);
+        }
+      }
+      else{
+        if(bx[i]+ax[pts2[j]]>0.0 && by[i]+ay[pts2[j]] >0.0){
+          XYMove(bx[i]+ax[pts2[j]], by[i]+ay[pts2[j]]);
+          delay(600);
+        }
+      }
+    }
+  }
+  Serial.println("Finished cycles");
 }
 
 String getValue(String data, char separator, int index)
@@ -204,65 +231,34 @@ void Adjust(float dx, float dy)
     Serial.print("      ");
     Serial.println(by[i]);
   }
-    xmax = xmax - dx;
-    ymax = ymax - dy;
-    Serial.print("xmax: ");
-    Serial.print( xmax   );
-    Serial.print(",      ");
-    Serial.print("ymax: ");
-    Serial.println( ymax   );
 }
 
 void XYMove(float x, float y)
 {
-  if(x<xmax && y<ymax){  
+  if(x<xmax && y<ymax && x>=0 && y>=0){  
     float dx = x-globalX;
     float dy = y-globalY;
     //Move to x, y
     Serial.print("Moving...");
-    //Serial.print("Moving difference of (d");
-    //Serial.print(x);
-    //Serial.print(", d");
-    //Serial.print(y);
-    //Serial.print(")  ...");
+
     if(dx>=0){
-      for (int i=0; i <=(dx*142); i++){
+      for (int i=0; i <=(dx*stepx); i++){
         myMotor1->onestep(FORWARD, DOUBLE);
-        //globalX += stepsize;
-       //Serial.print("POS: ");
-       //Serial.print(globalX);
-       //Serial.print(",");
-       //Serial.println(globalY);
     }
     }
     if(dx<0){
-     for (int i=0; i <=(abs(dx)*142); i++){
+     for (int i=0; i <=(abs(dx)*stepx); i++){
      myMotor1->onestep(BACKWARD, DOUBLE);
-     //globalX += stepsize;
-     //Serial.print("POS: ");
-     //Serial.print(globalX);
-     //Serial.print(",");
-     //Serial.println(globalY);
     }
     }
     if(dy>=0){
-    for (int j=0; j <=(dy*135); j++){
+    for (int j=0; j <=(dy*stepy); j++){
       myMotor2->onestep(FORWARD, DOUBLE);
-     //globalY += stepsize;
-     //Serial.print("POS: ");
-     //Serial.print(globalX);
-     //Serial.print(",");
-     //Serial.println(globalY);
     }
     }
     if(dy<0){
-     for (int j=0; j <=(abs(dy)*135); j++){
+     for (int j=0; j <=(abs(dy)*stepy); j++){
      myMotor2->onestep(BACKWARD, DOUBLE);
-     //globalY += stepsize;
-     //Serial.print("POS: ");
-     //Serial.print(globalX);
-      //Serial.print(",");
-      //Serial.println(globalY);
     }
     }
     globalX = x;
@@ -280,54 +276,27 @@ void XYMove(float x, float y)
 
 void DXYMove(float x, float y)
 {
-  if((globalX + x)<xmax && (globalY + y)<ymax){  
-    //float dx = x-globalX;
-    //float dy = y-globalY;
+  if((globalX + x)<xmax && (globalY + y)<ymax && (globalX + x)>=0 && (globalY + y)>=0 ){  
     //Move to x, y
     Serial.print("Moving...");
-    //Serial.print("Moving difference of (d");
-    //Serial.print(x);
-    //Serial.print(", d");
-    //Serial.print(y);
-    //Serial.print(")  ...");
     if(x>=0){
-      for (int i=0; i <=(x*142); i++){
+      for (int i=0; i <=(x*stepx); i++){
         myMotor1->onestep(FORWARD, DOUBLE);
-        //globalX += stepsize;
-       //Serial.print("POS: ");
-       //Serial.print(globalX);
-       //Serial.print(",");
-       //Serial.println(globalY);
     }
     }
     if(x<0){
-     for (int i=0; i <=(abs(x)*142); i++){
+     for (int i=0; i <=(abs(x)*stepx); i++){
      myMotor1->onestep(BACKWARD, DOUBLE);
-     //globalX += stepsize;
-     //Serial.print("POS: ");
-     //Serial.print(globalX);
-     //Serial.print(",");
-     //Serial.println(globalY);
     }
     }
     if(y>=0){
-    for (int j=0; j <=(y*135); j++){
+    for (int j=0; j <=(y*stepy); j++){
       myMotor2->onestep(FORWARD, DOUBLE);
-     //globalY += stepsize;
-     //Serial.print("POS: ");
-     //Serial.print(globalX);
-     //Serial.print(",");
-     //Serial.println(globalY);
     }
     }
     if(y<0){
-     for (int j=0; j <=(abs(y)*135); j++){
+     for (int j=0; j <=(abs(y)*stepy); j++){
      myMotor2->onestep(BACKWARD, DOUBLE);
-     //globalY += stepsize;
-     //Serial.print("POS: ");
-     //Serial.print(globalX);
-      //Serial.print(",");
-      //Serial.println(globalY);
     }
     }
     globalX = globalX + x;
@@ -383,6 +352,9 @@ void setHome()
   Serial.println("complete!");
   globalX = 0;
   globalY = 0;
+  int ix = -1;
+  int iy = -1;
+  int ib = 0;
 }
 
 void  horizontalHomeRoutine(){
@@ -410,7 +382,13 @@ void  verticalHomeRoutine(){
   myMotor2->release();
 }
 
-void Raster(){
+//Caleb, I think that these should be functions with inputs
+// e.g., Raster(int boardNumber, float xOffSet, float yOffSet, float stepSize)
+// and   RasterSet(int boardNumber, float xOffSet, float yOffSet)
+// or making definitions of the rastering home position like we have for 
+// the diodes and boards up top. Since you will be using this code next and 
+// not me, I will leave it like this for now 
+/*void Raster(){
   //XYMove(bx[3],by[3])
   for (int H=0; H <10; ++H){
     if (H%2!=0){
@@ -429,6 +407,33 @@ void RasterSet(){
   XYMove(bx[3]+14.56, by[3]+12.7);
   Serial.println("Done Raster Set");
 }
-
-
-
+*/
+void Raster(){
+  //XYMove(bx[3],by[3])
+  for (int H=0; H <17; ++H){
+    if (H%2!=0){
+      XYMove(bx[3]+20.20, by[3]+(12.3+0.6*H));
+    }
+    else if (H%2==0){
+      XYMove(bx[3]+30.65, by[3]+(12.3+0.6*H));
+      if (H==16){
+        for (int K=16; K >0; --K){
+          if (K%2!=0){
+            XYMove(bx[3]+20.20, by[3]+(12.3+0.6*K));
+          }
+          else if (K%2==0){
+          XYMove(bx[3]+30.65, by[3]+(12.3+0.6*K));
+          }
+        }
+      }
+    }
+    else{
+      Serial.println("Problem with H");
+    }
+  }
+  Serial.print("Done");
+}
+void RasterSet(){
+  XYMove(bx[3]+20.20, by[3]+12.3);
+  Serial.println("Done Raster Set");
+}
